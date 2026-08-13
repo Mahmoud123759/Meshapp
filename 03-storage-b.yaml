@@ -62,7 +62,7 @@ spec:
             - name: STRESS_CPU_BURN_MS
               value: "0"
             - name: DB_HOST
-              value: "meshapp-db.meshapp.svc.cluster.local"
+              value: "dev.cefewiuqwmcz.us-east-1.rds.amazonaws.com"
             - name: DB_USER
               valueFrom:
                 secretKeyRef:
