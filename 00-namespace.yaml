@@ -1,0 +1,18 @@
+---
+# =============================================================================
+# MeshForge — Namespace
+# =============================================================================
+# A 5-service mesh demo combining:
+#   - obs-training-mesh topology (Node.js, tiered call graph)
+#   - obsforge observability (OTEL traces → Alloy, Prometheus /metrics, Alloy annotations)
+#
+# Services: ingress-gw → aggregator → processor → storage-a, storage-b
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: meshapp
+  labels:
+    app.kubernetes.io/part-of: meshapp
+    # Istio sidecar injection (optional — safe to leave even without Istio)
+    istio-injection: enabled

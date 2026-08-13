@@ -1,0 +1,144 @@
+---
+# =============================================================================
+# MeshForge — storage-a  (Tier 4, leaf node A)
+# =============================================================================
+# No downstreams — simulates a storage/DB leaf with artificial latency.
+# STRESS_LATENCY_MS and STRESS_ERROR_RATE can be patched at runtime.
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: meshapp-storage-a
+  namespace: meshapp
+  labels:
+    app: meshapp-storage-a
+    app.kubernetes.io/name: meshapp-storage-a
+    app.kubernetes.io/part-of: meshapp
+    app.kubernetes.io/version: "1.0.0"
+    tier: storage
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: meshapp-storage-a
+  template:
+    metadata:
+      labels:
+        app: meshapp-storage-a
+        app.kubernetes.io/name: meshapp-storage-a
+        app.kubernetes.io/part-of: meshapp
+        tier: storage
+      annotations:
+        # ── Alloy annotationAutodiscovery ──────────────────────────────────
+        k8s.grafana.com/scrape: "true"
+        k8s.grafana.com/metrics.portNumber: "3000"
+        k8s.grafana.com/metrics.path: "/metrics"
+        k8s.grafana.com/job: "meshapp/storage-a"
+    spec:
+      containers:
+        - name: meshapp-storage-a
+          image: node:22-alpine
+          command: ["/bin/sh", "/startup/startup.sh"]
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          env:
+            - name: SERVICE_NAME
+              value: "meshapp-storage-a"
+            - name: PORT
+              value: "3000"
+            # OTLP gRPC → Alloy → Tempo
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "alloy.monitoring.svc.cluster.local:4317"
+            - name: PYROSCOPE_SERVER
+              value: "http://pyroscope.monitoring.svc.cluster.local:4040"
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            # Tune these to inject chaos during training exercises:
+            - name: STRESS_LATENCY_MS
+              value: "0"
+            - name: STRESS_ERROR_RATE
+              value: "0"
+            - name: STRESS_CPU_BURN_MS
+              value: "0"
+            - name: DB_HOST
+              value: "meshapp-db.meshapp.svc.cluster.local"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: db-creds
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-creds
+                  key: password
+            - name: DB_NAME
+              value: "dev_db"
+          resources:
+            requests:
+              cpu: 20m
+              memory: 512Mi
+            limits:
+              cpu: 150m
+              memory: 512Mi
+          volumeMounts:
+            - name: app-code
+              mountPath: /app
+            - name: startup
+              mountPath: /startup
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            periodSeconds: 10
+            failureThreshold: 360
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 420
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 420
+            periodSeconds: 15
+      volumes:
+        - name: app-code
+          configMap:
+            name: meshapp-node-code
+        - name: startup
+          configMap:
+            name: meshapp-startup
+            defaultMode: 0755
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: meshapp-storage-a
+  namespace: meshapp
+  labels:
+    app: meshapp-storage-a
+    app.kubernetes.io/name: meshapp-storage-a
+    app.kubernetes.io/part-of: meshapp
+    tier: storage
+  annotations:
+    k8s.grafana.com/scrape: "true"
+    k8s.grafana.com/metrics.portNumber: "3000"
+    k8s.grafana.com/metrics.path: "/metrics"
+    k8s.grafana.com/job: "meshapp/storage-a"
+spec:
+  selector:
+    app: meshapp-storage-a
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+      protocol: TCP
+  type: ClusterIP

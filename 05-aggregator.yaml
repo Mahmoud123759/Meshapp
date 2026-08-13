@@ -1,0 +1,122 @@
+---
+# =============================================================================
+# MeshForge — aggregator  (Tier 2)
+# =============================================================================
+# Receives from ingress-gw, calls processor. Produces the middle layer of the
+# service graph:   ingress-gw → aggregator → processor → storage-*
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: meshapp-aggregator
+  namespace: meshapp
+  labels:
+    app: meshapp-aggregator
+    app.kubernetes.io/name: meshapp-aggregator
+    app.kubernetes.io/part-of: meshapp
+    app.kubernetes.io/version: "1.0.0"
+    tier: aggregation
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: meshapp-aggregator
+  template:
+    metadata:
+      labels:
+        app: meshapp-aggregator
+        app.kubernetes.io/name: meshapp-aggregator
+        app.kubernetes.io/part-of: meshapp
+        tier: aggregation
+      annotations:
+        k8s.grafana.com/scrape: "true"
+        k8s.grafana.com/metrics.portNumber: "3000"
+        k8s.grafana.com/metrics.path: "/metrics"
+        k8s.grafana.com/job: "meshapp/meshapp-aggregator"
+    spec:
+      containers:
+        - name: meshapp-aggregator
+          image: node:22-alpine
+          command: ["/bin/sh", "/startup/startup.sh"]
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          env:
+            - name: SERVICE_NAME
+              value: "meshapp-aggregator"
+            - name: PORT
+              value: "3000"
+            - name: PYROSCOPE_SERVER
+              value: "http://pyroscope.monitoring.svc.cluster.local:4040"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "alloy.monitoring.svc.cluster.local:4317"
+            - name: DOWNSTREAM_SERVICES
+              value: "meshapp-processor.meshapp.svc.cluster.local:3000"
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: STRESS_LATENCY_MS
+              value: "0"
+            - name: STRESS_ERROR_RATE
+              value: "0"
+            - name: STRESS_CPU_BURN_MS
+              value: "0"
+          resources:
+            requests:
+              cpu: 30m
+              memory: 512Mi
+            limits:
+              cpu: 200m
+              memory: 512Mi
+          volumeMounts:
+            - name: app-code
+              mountPath: /app
+            - name: startup
+              mountPath: /startup
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 300
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 300
+            periodSeconds: 15
+      volumes:
+        - name: app-code
+          configMap:
+            name: meshapp-node-code
+        - name: startup
+          configMap:
+            name: meshapp-startup
+            defaultMode: 0755
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: meshapp-aggregator
+  namespace: meshapp
+  labels:
+    app: meshapp-aggregator
+    app.kubernetes.io/name: meshapp-aggregator
+    app.kubernetes.io/part-of: meshapp
+    tier: aggregation
+  annotations:
+    k8s.grafana.com/scrape: "true"
+    k8s.grafana.com/metrics.portNumber: "3000"
+    k8s.grafana.com/metrics.path: "/metrics"
+    k8s.grafana.com/job: "meshapp/meshapp-aggregator"
+spec:
+  selector:
+    app: meshapp-aggregator
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+      protocol: TCP
+  type: ClusterIP
