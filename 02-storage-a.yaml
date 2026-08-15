@@ -69,12 +69,12 @@ spec:
             - name: DB_USER
               valueFrom:
                 secretKeyRef:
-                  name: db-creds
+                  name: rds-creds
                   key: username
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: db-creds
+                  name: rds-creds
                   key: password
             - name: DB_NAME
               value: "dev_db"
