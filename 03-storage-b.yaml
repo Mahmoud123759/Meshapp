@@ -61,19 +61,22 @@ spec:
             - name: STRESS_CPU_BURN_MS
               value: "0"
             - name: DB_HOST
-              value: "dev.cefewiuqwmcz.us-east-1.rds.amazonaws.com"
+              valueFrom:
+                secretKeyRef:
+                  name: rds-creds
+                  key: host
             - name: DB_USER
-              value: devadmin
-              # valueFrom:
-              #   secretKeyRef:
-              #     name: rds-creds
-              #     key: username
+              
+              valueFrom:
+                secretKeyRef:
+                  name: rds-creds
+                  key: username
             - name: DB_PASSWORD
-              value: Passw0rd2025
-              # valueFrom:
-              #   secretKeyRef:
-              #     name: rds-creds
-              #     key: password
+              
+              valueFrom:
+                secretKeyRef:
+                  name: rds-creds
+                  key: password
             - name: DB_NAME
               value: "dev_db"
           resources:

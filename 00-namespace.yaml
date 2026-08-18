@@ -8,11 +8,11 @@
 #
 # Services: ingress-gw → aggregator → processor → storage-a, storage-b
 # =============================================================================
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: meshapp
-  labels:
-    app.kubernetes.io/part-of: meshapp
-    # Istio sidecar injection (optional — safe to leave even without Istio)
-    istio-injection: enabled
+# apiVersion: v1
+# kind: Namespace
+# metadata:
+#   name: meshapp
+#   labels:
+#     app.kubernetes.io/part-of: meshapp
+#     # Istio sidecar injection (optional — safe to leave even without Istio)
+#     istio-injection: enabled
